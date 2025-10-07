@@ -2,8 +2,8 @@ name: Domain Check and Update
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Her 30 dakikada bir çalışır
-  workflow_dispatch:          # Manuel olarak da çalıştırılabilir
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -46,9 +46,9 @@ jobs:
         fi
         echo "Başlangıç domain numarası: $DOMAIN_NUMBER"
 
-        # Python scripti çalıştır
-        DOMAIN_NUMBER=$DOMAIN_NUMBER python3 - <<'PYCODE'
-import requests, os
+        # Python scriptini çalıştır
+        python3 - <<"PYCODE"
+import requests, os, sys
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -65,20 +65,20 @@ def check_domain(domain):
         print(f'Hata oluştu {domain}: {e}')
         return False
 
+# Bash ortam değişkenini al
 start_domain_number = int(os.environ.get("DOMAIN_NUMBER", "1423"))
 print(f'Başlangıç domain numarası: {start_domain_number}')
 
 max_check = 15
 latest_working_domain = None
 
-# Ana döngü - domainleri sırayla kontrol et
+# Domainleri sırayla kontrol et
 for i in range(max_check):
-    current_check_domain = f'https://trgoals{start_domain_number + i}.xyz/'
-    if check_domain(current_check_domain):
-        latest_working_domain = current_check_domain
-        print(f'Aktif domain bulundu: {current_check_domain}')
+    current_domain = f'https://trgoals{start_domain_number + i}.xyz/'
+    if check_domain(current_domain):
+        latest_working_domain = current_domain
+        print(f'Aktif domain bulundu: {current_domain}')
 
-# Eğer çalışan bir domain bulunduysa birkaç üstünü de kontrol et
 if latest_working_domain:
     latest_num = int(latest_working_domain.split('trgoals')[1].split('.xyz')[0])
     selected_domain = latest_working_domain
@@ -94,11 +94,12 @@ else:
     selected_domain = f'https://trgoals{start_domain_number}.xyz/'
     print(f'Hiç çalışan domain bulunamadı, varsayılan kullanılacak: {selected_domain}')
 
-# domain.txt dosyasını güncelle
+# Dosyayı güncelle
 with open('domain.txt', 'w') as f:
     f.write(f'guncel_domain={selected_domain}\n')
 
 print(f'Seçilen domain: {selected_domain}')
+sys.exit(0)
 PYCODE
 
     - name: Commit and push changes
@@ -107,7 +108,6 @@ PYCODE
         git config user.email "github-actions@github.com"
         git add domain.txt
 
-        # Değişiklik varsa commit et
         if git diff --staged --quiet; then
           echo "Değişiklik yok, commit atlanıyor"
         else
