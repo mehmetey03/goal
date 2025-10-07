@@ -1,3 +1,31 @@
+name: Domain Check and Update
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Her 30 dakikada bir çalışır
+  workflow_dispatch:          # Manuel olarak da çalıştırılabilir
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-update-domain:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: pip install requests
+
     - name: Smart Domain Check and Update
       run: |
         # Mevcut domaini al veya varsayılanı kullan
@@ -18,11 +46,15 @@
         fi
         echo "Başlangıç domain numarası: $DOMAIN_NUMBER"
 
-        # Akıllı domain kontrolü için Python scripti
-        python3 - <<'PYCODE'
+        # Python scripti çalıştır
+        DOMAIN_NUMBER=$DOMAIN_NUMBER python3 - <<'PYCODE'
 import requests, os
 
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'}
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/123.0.0.0 Safari/537.36'
+}
 
 def check_domain(domain):
     try:
@@ -39,12 +71,14 @@ print(f'Başlangıç domain numarası: {start_domain_number}')
 max_check = 15
 latest_working_domain = None
 
+# Ana döngü - domainleri sırayla kontrol et
 for i in range(max_check):
     current_check_domain = f'https://trgoals{start_domain_number + i}.xyz/'
     if check_domain(current_check_domain):
         latest_working_domain = current_check_domain
         print(f'Aktif domain bulundu: {current_check_domain}')
 
+# Eğer çalışan bir domain bulunduysa birkaç üstünü de kontrol et
 if latest_working_domain:
     latest_num = int(latest_working_domain.split('trgoals')[1].split('.xyz')[0])
     selected_domain = latest_working_domain
@@ -54,12 +88,30 @@ if latest_working_domain:
             selected_domain = next_domain
             print(f'{extra}. üst domain aktif, seçilen domain: {selected_domain}')
         else:
+            print(f'{extra}. üst domain çalışmıyor, kontrol durduruldu')
             break
 else:
     selected_domain = f'https://trgoals{start_domain_number}.xyz/'
     print(f'Hiç çalışan domain bulunamadı, varsayılan kullanılacak: {selected_domain}')
 
+# domain.txt dosyasını güncelle
 with open('domain.txt', 'w') as f:
-    f.write(f'guncel_domain={selected_domain}')
+    f.write(f'guncel_domain={selected_domain}\n')
+
 print(f'Seçilen domain: {selected_domain}')
 PYCODE
+
+    - name: Commit and push changes
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add domain.txt
+
+        # Değişiklik varsa commit et
+        if git diff --staged --quiet; then
+          echo "Değişiklik yok, commit atlanıyor"
+        else
+          git commit -m "Güncel domain: $(date '+%Y-%m-%d %H:%M:%S')"
+          git push
+          echo "Değişiklikler push edildi"
+        fi
