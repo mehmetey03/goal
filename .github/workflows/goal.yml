@@ -39,7 +39,7 @@ jobs:
 
         # Domain numarasını al (numara yoksa 1002 başlangıç değeri kullan)
         if echo "$CURRENT_DOMAIN" | grep -q 'taraftarium[0-9]\+'; then
-          DOMAIN_NUMBER=$(echo $CURRENT_DOMAIN | grep -o 'trgoals[0-9]\+' | grep -o '[0-9]\+')
+          DOMAIN_NUMBER=$(echo $CURRENT_DOMAIN | grep -o 'taraftarium[0-9]\+' | grep -o '[0-9]\+')
         else
           DOMAIN_NUMBER="1002"
         fi
@@ -89,7 +89,7 @@ jobs:
         
         # Tüm domainleri kontrol etmek için for döngüsü
         for i in range(max_check):
-            current_check_domain = f'https://trgoals{start_domain_number + i}.xyz/'
+            current_check_domain = f'https://taraftarium{start_domain_number + i}.xyz/'
             
             # Mevcut domaini zaten kontrol ettik, tekrar etme
             if current_check_domain == current_domain:
@@ -104,7 +104,7 @@ jobs:
         # Döngü bittikten sonra en son bulunan çalışan domaini kullan
         if latest_working_domain:
             # En son çalışan domainin numarasını al
-            match = re.search(r'trgoals(\d+)', latest_working_domain)
+            match = re.search(r'taraftarium(\d+)', latest_working_domain)
             if match:
                 latest_domain_number = int(match.group(1))
                 selected_domain = latest_working_domain
